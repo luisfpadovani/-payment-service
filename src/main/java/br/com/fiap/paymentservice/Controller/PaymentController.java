@@ -1,73 +1,48 @@
 package br.com.fiap.paymentservice.Controller;
 
-import br.com.fiap.paymentservice.Entity.Payment;
+import br.com.fiap.paymentservice.Domain.Payment;
+import br.com.fiap.paymentservice.Repository.PaymentDao;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.net.URI;
 
+@Slf4j
 @RestController
 public class PaymentController {
-    private ArrayList<Payment> payments = new ArrayList<>();
+    PaymentDao payDao;
+    Payment[] payList;
 
-    @GetMapping("/payment/findById/{id}")
-    public Map<String, Payment> findById(@PathVariable("id") int id) {
-        HashMap<String, Payment> mapa = new HashMap<>();
-
-        try {
-            Payment order = this.payments.get(id);
-            mapa.put("Payment", order);
-        } catch (Exception err) {
-            mapa.put("Payment", null);
-        }
-        return mapa;
+    public PaymentController(){
+        payDao = new PaymentDao();
+        payList = payDao.returnList();
     }
 
-    @PostMapping("/payment/save")
-    public Map<String, String> save(@RequestBody Payment payment) {
-        HashMap<String, String> mapa = new HashMap<>();
-        try {
-            // Adiciona o payment ao array
-            this.payments.add(payment);
+    @GetMapping("/payment/findByid/{idTransacao}")
+    public ResponseEntity<Payment> findById(@PathVariable(value="idTransacao", required=true) int idTransacao){
 
-            // Add o id ao payment atual
-            int id = this.payments.size() - 1;
-            this.payments.get(id).setId(id);
-
-            mapa.put("URL", "http://localhost:8080/payment/findById/" + id);
-        } catch (Exception err) {
-            mapa.put("Payment", "Não foi possivel salvar!");
-        }
-
-        return mapa;
+        return new ResponseEntity(payDao.findById(idTransacao), HttpStatus.OK);
     }
 
-    @PostMapping("/payment/update/{id}")
-    public Map<String, String> update(@RequestBody Payment payment, @PathVariable("id") int id) {
-        HashMap<String, String> mapa = new HashMap<>();
-        try {
-            this.payments.set(id, payment);
-            mapa.put("Mensagem", "Payment atualizado!");
-            mapa.put("Url", "http://localhost:8080/payment/findById/" + id);
-        } catch (Exception err) {
-            mapa.put("Mensagem", "Esta Payment não existe!");
-        }
-
-        return mapa;
+    @PutMapping("/payment/{idTransacao}")
+    public ResponseEntity<Boolean> update(@PathVariable(value="idTransacao", required=true) int idTransacao,
+                                          @RequestBody Payment pay){
+        return new ResponseEntity(payDao.update(idTransacao, pay), HttpStatus.OK);
     }
 
-    @PostMapping("/payment/delete/{id}")
-    public Map<String, String> delete(@PathVariable("id") int id) {
 
-        HashMap<String, String> mapa = new HashMap<>();
-        try {
-            this.payments.remove(id);
-            mapa.put("Mensagem", "Payment: " + id + " removido!");
-        } catch (Exception err) {
-            mapa.put("Payment", "Esta Payment não existe!");
-        }
+    @DeleteMapping("/payment/{idTransacao}")
+    public ResponseEntity<Payment> delete(@PathVariable(value="idTransacao", required=true) int idTransacao){
+        return new ResponseEntity(payDao.delete(idTransacao), HttpStatus.OK);
+    }
 
-        return mapa;
+    @PostMapping("/payment")
+    public ResponseEntity save(@RequestBody Payment pay){
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}").buildAndExpand(payDao.save(pay).getIdTransacao()).toUri();
+        return new ResponseEntity(location, HttpStatus.OK);
     }
 }
